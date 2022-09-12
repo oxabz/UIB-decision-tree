@@ -2,7 +2,7 @@
 from itertools import count
 import json
 from random import shuffle
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Tuple, Union
 from typing_extensions import Self
 from sklearn.model_selection import train_test_split
 import numpy as np
@@ -13,7 +13,7 @@ class Node:
         raise NotImplementedError("Node is abstract")
     def prunning_prep(self, x, y) -> int:
         raise NotImplementedError("Node is abstract")
-    def prune(self, x, y) -> Self:
+    def prune(self, x, y) -> Tuple[Self, int]:
         raise NotImplementedError("Node is abstract")
     def toDot(self, parent, elem_count):
         raise NotImplementedError("Node is abstract")
@@ -39,8 +39,8 @@ class Leaf(Node):
     def prunning_prep(self, x, y)->int:
         return np.sum(y == self.label)
 
-    def prune(self, x, y) -> Node:
-        return self
+    def prune(self, x, y) -> Tuple[Node, int]:
+        return (self, np.sum(y == self.label))
 
     def toDot(self, parent, elem_count):
         elem_count["0"] += 1
@@ -91,23 +91,41 @@ class Branch(Node):
         self._prunning_hits = self.inf_branch.prunning_prep(xinf,yinf) + self.sup_branch.prunning_prep(xsup,ysup)
         return self._prunning_hits
 
-    def prune(self, x, y) -> Node:
-        if self._prunning_hits is None: 
-            raise "prune should never be call before prunning_prep"
+    # def prune(self, x, y) -> Node:
+    #     if self._prunning_hits is None: 
+    #         raise "prune should never be call before prunning_prep"
         
+    #     acc = np.sum(y == self._majority_label)
+
+    #     if self._prunning_hits > acc:
+    #         infmask =  x[:, self.feature] < self.boundry
+    #         xinf = x[infmask]
+    #         xsup = x[~infmask]
+    #         yinf = y[infmask]
+    #         ysup = y[~infmask]
+    #         self.inf_branch = self.inf_branch.prune(xinf,yinf)
+    #         self.sup_branch = self.sup_branch.prune(xsup,ysup)
+    #         return self
+    #     else: 
+    #         return Leaf(self._majority_label)
+
+    def prune(self, x, y):
+        infmask =  x[:, self.feature] < self.boundry
+        xinf = x[infmask]
+        xsup = x[~infmask]
+        yinf = y[infmask]
+        ysup = y[~infmask]
+        inf_branch, inf_acc = self.inf_branch.prune(xinf,yinf)
+        sup_branch, sup_acc = self.sup_branch.prune(xsup,ysup)
+
         acc = np.sum(y == self._majority_label)
 
-        if self._prunning_hits > acc:
-            infmask =  x[:, self.feature] < self.boundry
-            xinf = x[infmask]
-            xsup = x[~infmask]
-            yinf = y[infmask]
-            ysup = y[~infmask]
-            self.inf_branch = self.inf_branch.prune(xinf,yinf)
-            self.sup_branch = self.sup_branch.prune(xsup,ysup)
-            return self
-        else: 
-            return Leaf(self._majority_label)
+        if acc < inf_acc + sup_acc :
+            self.sup_branch = sup_branch
+            self.inf_branch = inf_branch
+            return (self, inf_acc + sup_acc)
+        else :
+            return (Leaf(self._majority_label), acc)
 
     def toDot(self, parent, elem_count):
         elem_count["0"] += 1
@@ -205,9 +223,9 @@ class DecisionTree:
         self.root_node = self._build_tree(x_train, y_train)
         if skip_pruning:
             return
-        self.root_node.prunning_prep(x_prune, y_prune)
-        self.root_node = self.root_node.prune(x_prune, y_prune)
-        self.toDotWData(x_prune,y_prune)
+        #self.root_node.prunning_prep(x_prune, y_prune)
+        self.root_node = self.root_node.prune(x_prune, y_prune)[0]
+        #self.toDotWData(x_prune,y_prune)
 
 
     def predict(self, x):
