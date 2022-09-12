@@ -5,8 +5,6 @@ Function that count the elements of an array and return a dictionary
 """
 def count_vals(array):
     count = {}
-
-
     for el in array:
         if el in count:
             count[el] += 1

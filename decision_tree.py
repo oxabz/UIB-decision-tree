@@ -2,6 +2,7 @@
 from itertools import count
 import json
 from random import shuffle
+import sys
 from typing import Any, Callable, Optional, Tuple, Union
 from typing_extensions import Self
 from sklearn.model_selection import train_test_split
@@ -11,13 +12,11 @@ import utils as ut
 class Node:
     def predict(self, x):
         raise NotImplementedError("Node is abstract")
-    def prunning_prep(self, x, y) -> int:
-        raise NotImplementedError("Node is abstract")
     def prune(self, x, y) -> Tuple[Self, int]:
         raise NotImplementedError("Node is abstract")
-    def toDot(self, parent, elem_count):
+    def toDot(self, parent, elem_count, file):
         raise NotImplementedError("Node is abstract")
-    def toDotWData(self, x, y, parent, elem_count):
+    def toDotWData(self, x, y, parent, elem_count, file):
         raise NotImplementedError("Node is abstract")
 
 
@@ -36,26 +35,23 @@ class Leaf(Node):
                 np.full((x.shape[0],1), self.label)
             ], axis=1)
 
-    def prunning_prep(self, x, y)->int:
-        return np.sum(y == self.label)
-
     def prune(self, x, y) -> Tuple[Node, int]:
         return (self, np.sum(y == self.label))
 
-    def toDot(self, parent, elem_count):
+    def toDot(self, parent, elem_count, file):
         elem_count["0"] += 1
         node = str(self.label) + str(elem_count["0"])
-        print("""   {}[shape=circle label=\"{}\"]""".format(node, self.label))
+        print("""   {}[shape=circle label=\"{}\"]""".format(node, self.label), file=file)
         if parent is not None:
-            print("""   {} -> {} """.format(parent, node))
+            print("""   {} -> {} """.format(parent, node), file=file)
     
-    def toDotWData(self, x, y, parent, elem_count):
+    def toDotWData(self, x, y, parent, elem_count, file):
         counts = ut.count_vals(y)
         elem_count["0"] += 1
         node = str(self.label) + str(elem_count["0"])
-        print("""   {}[label=\"{}\\n{}\"]""".format(node, self.label, counts))
+        print("""   {}[label=\"{}\\n{}\"]""".format(node, self.label, counts), file=file)
         if parent is not None:
-            print("""   {} -> {} """.format(parent, node))
+            print("""   {} -> {} """.format(parent, node), file=file)
 
 
 
@@ -81,33 +77,6 @@ class Branch(Node):
         yinf = self.inf_branch.predict(xinf)
         ysup = self.sup_branch.predict(xsup)
         return np.concatenate([yinf, ysup])
-    
-    def prunning_prep(self, x, y)->int:
-        infmask =  x[:, self.feature] < self.boundry
-        xinf = x[infmask]
-        xsup = x[~infmask]
-        yinf = y[infmask]
-        ysup = y[~infmask]
-        self._prunning_hits = self.inf_branch.prunning_prep(xinf,yinf) + self.sup_branch.prunning_prep(xsup,ysup)
-        return self._prunning_hits
-
-    # def prune(self, x, y) -> Node:
-    #     if self._prunning_hits is None: 
-    #         raise "prune should never be call before prunning_prep"
-        
-    #     acc = np.sum(y == self._majority_label)
-
-    #     if self._prunning_hits > acc:
-    #         infmask =  x[:, self.feature] < self.boundry
-    #         xinf = x[infmask]
-    #         xsup = x[~infmask]
-    #         yinf = y[infmask]
-    #         ysup = y[~infmask]
-    #         self.inf_branch = self.inf_branch.prune(xinf,yinf)
-    #         self.sup_branch = self.sup_branch.prune(xsup,ysup)
-    #         return self
-    #     else: 
-    #         return Leaf(self._majority_label)
 
     def prune(self, x, y):
         infmask =  x[:, self.feature] < self.boundry
@@ -127,22 +96,22 @@ class Branch(Node):
         else :
             return (Leaf(self._majority_label), acc)
 
-    def toDot(self, parent, elem_count):
+    def toDot(self, parent, elem_count, file):
         elem_count["0"] += 1
         node = str(self._majority_label) + str(elem_count["0"])
-        print("""   {}[shape=box label=\"{}\\n x[{}] < {:.2f}\"]""".format(node, self._majority_label, self.feature, self.boundry))
+        print("""   {}[shape=box label=\"{}\\n x[{}] < {:.2f}\"]""".format(node, self._majority_label, self.feature, self.boundry), file=file)
         if parent is not None:
-            print("""   {} -> {}""".format(parent, node))
-        self.inf_branch.toDot(node, elem_count)
-        self.sup_branch.toDot(node, elem_count)
+            print("""   {} -> {}""".format(parent, node), file=file)
+        self.inf_branch.toDot(node, elem_count, file)
+        self.sup_branch.toDot(node, elem_count, file)
 
-    def toDotWData(self, x, y, parent, elem_count):
+    def toDotWData(self, x, y, parent, elem_count, file):
         counts = ut.count_vals(y)
         elem_count["0"] += 1
         node = str(self._majority_label) + str(elem_count["0"])
-        print("""   {}[shape=box label=\"{}\\n x[{}] < {:.2f}\\n{}\"]""".format(node, self._majority_label, self.feature, self.boundry, counts))
+        print("""   {}[shape=box label=\"{}\\n x[{}] < {:.2f}\\n{}\"]""".format(node, self._majority_label, self.feature, self.boundry, counts), file=file)
         if parent is not None:
-            print("""   {} -> {}""".format(parent, node))
+            print("""   {} -> {}""".format(parent, node), file=file)
         
         infmask =  x[:, self.feature] < self.boundry
         xinf = x[infmask]
@@ -150,8 +119,8 @@ class Branch(Node):
         yinf = y[infmask]
         ysup = y[~infmask]
 
-        self.inf_branch.toDotWData(xinf, yinf, node, elem_count)
-        self.sup_branch.toDotWData(xsup, ysup, node, elem_count)
+        self.inf_branch.toDotWData(xinf, yinf, node, elem_count, file=file)
+        self.sup_branch.toDotWData(xsup, ysup, node, elem_count, file=file)
 
 class DecisionTree:
     impurity_mesurement: Callable[[np.array], float]
@@ -223,9 +192,7 @@ class DecisionTree:
         self.root_node = self._build_tree(x_train, y_train)
         if skip_pruning:
             return
-        #self.root_node.prunning_prep(x_prune, y_prune)
         self.root_node = self.root_node.prune(x_prune, y_prune)[0]
-        #self.toDotWData(x_prune,y_prune)
 
 
     def predict(self, x):
@@ -235,15 +202,15 @@ class DecisionTree:
         preds = preds[preds[:, 0].argsort()]
         return preds[:,-1]
 
-    def toDot(self):
-        print("digraph D {")
-        self.root_node.toDot(None, {"0":0})
-        print("}")
+    def toDot(self, file=sys.stdout):
+        print("digraph DecisionTree {", file=file)
+        self.root_node.toDot(None, {"0":0}, file)
+        print("}", file=file)
 
-    def toDotWData(self, x, y):
-        print("digraph D {")
-        self.root_node.toDotWData(x, y, None, {"0":0})
-        print("}")
+    def toDotWData(self, x, y, file=sys.stdout):
+        print("digraph DecisionTree {", file=file)
+        self.root_node.toDotWData(x, y, None, {"0":0},file)
+        print("}", file=file)
 
     def __call__(self, x):
         return self.predict(x)
