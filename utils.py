@@ -47,5 +47,5 @@ def gini_impurity(set):
     sum = 0
     for [k, v] in counts.items():
         p = v/total
-        sum + p^2
+        sum += p**2
     return 1 - sum

@@ -7,6 +7,7 @@ from typing import Any, Callable, Optional, Tuple, Union
 from typing_extensions import Self
 from sklearn.model_selection import train_test_split
 import numpy as np
+from numpy.typing import ArrayLike
 import utils as ut
 
 class Node:
@@ -60,6 +61,7 @@ class Branch(Node):
     boundry:float
     sup_branch:Node
     inf_branch:Node
+    _majority_label:Any
     
     def __init__(self, feature:int, boundry:float, sup_branch:Node, inf_branch:Node, majority_label:Any) -> None:
         super().__init__()
@@ -84,6 +86,9 @@ class Branch(Node):
         xsup = x[~infmask]
         yinf = y[infmask]
         ysup = y[~infmask]
+
+        # Here we use the number of correct result rather 
+        # than accuracy because they are equivalent for our purpose
         inf_branch, inf_acc = self.inf_branch.prune(xinf,yinf)
         sup_branch, sup_acc = self.sup_branch.prune(xsup,ysup)
 
@@ -123,18 +128,18 @@ class Branch(Node):
         self.sup_branch.toDotWData(xsup, ysup, node, elem_count, file=file)
 
 class DecisionTree:
-    impurity_mesurement: Callable[[np.array], float]
+    impurity_mesurement: Callable[[ArrayLike], float]
     root_node: Optional[Node]
 
-    def __init__(self, impurity_mesurement: Union[str,Callable[[np.array], float]] = "entropy"):
-        if type(impurity_mesurement) == Callable[[np.array], float]:
+    def __init__(self, impurity_mesurement: Union[str, Callable[[ArrayLike], float]] = "entropy"):
+        if type(impurity_mesurement) == Callable[[ArrayLike], float]:
             self.impurity_mesurement = impurity_mesurement
         elif impurity_mesurement == "entropy":
             self.impurity_mesurement = ut.entropy
         elif impurity_mesurement == "gini":
             self.impurity_mesurement = ut.gini_impurity
 
-    def _build_tree(self, x:np.ndarray, y:np.ndarray) -> Node:
+    def _build_tree(self, x:ArrayLike, y:ArrayLike) -> Node:
         if np.all(y == y[0]):
             # If every y are equal return a leaf
             return Leaf(y[0])
@@ -187,7 +192,7 @@ class DecisionTree:
                 majority_label=majority_label
             )
 
-    def fit(self, x, y, skip_pruning=False, pruning_size=0.3):
+    def fit(self, x, y, skip_pruning=False, pruning_size=0.2):
         x_train, x_prune, y_train, y_prune = train_test_split(x, y, test_size=pruning_size, shuffle=False)
         self.root_node = self._build_tree(x_train, y_train)
         if skip_pruning:
