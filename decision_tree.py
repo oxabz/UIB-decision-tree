@@ -193,7 +193,7 @@ class DecisionTree:
             )
 
     def fit(self, x, y, skip_pruning=False, pruning_size=0.2):
-        x_train, x_prune, y_train, y_prune = train_test_split(x, y, test_size=pruning_size, shuffle=False)
+        x_train, x_prune, y_train, y_prune = (x,[],y,[]) if skip_pruning else train_test_split(x, y, test_size=pruning_size, shuffle=False)
         self.root_node = self._build_tree(x_train, y_train)
         if skip_pruning:
             return

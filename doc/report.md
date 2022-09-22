@@ -18,9 +18,10 @@ In this assignement I designed, coded and evaluated a decision tree classifier i
 
 Here are some of the general ideas I wanted to follow designing the decesion tree : 
 
-#### Python is slow but... 
+#### Python is slow but...
 
 Python is slow. That being said it was still my choice to implement the tree because:
+
 - it's simple
 - it has a good datascience community
 - numpy's `ndarray` negate part of the slowness of python 
@@ -50,7 +51,7 @@ Obviously when we talk about tree the first thought is **recursion**. So  we'll 
 
 Now I'll explain how we build the tree and then exploit it.
 
-#### The tree 
+#### The tree
 
 Let's take a look at how tree is composed. 
 
@@ -91,7 +92,7 @@ else:
 
     y_cached_split = [] # We can cache some of the work we already did
     cached_mask = None  # trying to find the best split
-    
+
     # Useful stuff to compute IG but doesnt change between features
     E_base = self.impurity_mesurement(y)
     n = len(y)
@@ -116,7 +117,7 @@ else:
             best_split = split_plane
             y_cached_split = [ysubset1, ysubset2]
             cached_mask = split_mask
-    
+
     counts = ut.count_vals(y)
     majority_label = ut.dict_max(counts)[0] 
 
@@ -133,7 +134,7 @@ You can note that we keep some of the computed values cached so that we dont nee
 
 We also store the majority label for the branch during training because it will be usefull for the 
 
-#### Pruning 
+#### Pruning
 
 The implementation of the pruning algorythm is spread accross the iteration implementations of the fucntion `Node.prune`.
 
@@ -147,7 +148,7 @@ $$
 
 Appart from that no quirks in the implementation we just follow the algorythm described in the subject
 
-#### Inferance 
+#### Inferance
 
 We just propagate the dataset in the tree and return a label when a x reach a leaf. 
 
@@ -155,19 +156,19 @@ The only thing that gives a bit of difficulty is that we need to keep the corres
 
 ## Testing the Decision tree
 
-### Comparison 
+### Comparison
 
 We'll compare our tree to scikit learn `DecisionTreeClassifier`.
-To make the comparaison fair we'll add no limitation to the tree and use the `cost_complexity_pruning_path` function to prune the tree.
+To make the comparaison fair we'll add no limitation to the tree.
 
 ### Accuracy
 
 Here's the validation accuracy of our model against scikit learn's.
 
 |         | scikit learn | our implmentation |
-| :-----: | :----------: | :---------------: |
-|  gini   |   0.808469   |     0.830342      |
-| entropy |   0.806786   |      0.8682       |
+|:-------:|:------------:|:-----------------:|
+| gini    | 0.808469     | 0.830342          |
+| entropy | 0.806786     | 0.8682            |
 
 We can see we get a slightly better accuracy which is probably due to the scikit learn implementation being more optimized for performance.
 
@@ -182,20 +183,35 @@ It also seems that we get better results with entropy.
 I compared my implementation and scikit-learn on execution time on several randomly generated dataset and on the real dataset.
 
 Here is the result of the benchmarck :
-|                     |   size | sklearn gini | sklearn entropy | sklearn gini no pruning | sklearn entropy no pruning |  ours gini | ours entropy | ours gini no pruning | ours entropy no pruning |
-| :------------------ | -----: | -----------: | --------------: | ----------------------: | -------------------------: | ---------: | -----------: | -------------------: | ----------------------: |
-| Random(100)         |    100 |   0.00188231 |      0.00237012 |             0.000958204 |                 0.00117183 | 0.00818944 |   0.00924611 |           0.00732923 |              0.00773478 |
-| Random(1000)        |   1000 |    0.0162668 |       0.0276742 |               0.0075078 |                  0.0136621 |  0.0800889 |    0.0807607 |            0.0726871 |               0.0737305 |
-| Random(5000)        |   5000 |     0.182204 |        0.263704 |               0.0879135 |                   0.129792 |   0.438149 |     0.438669 |             0.415644 |                0.409316 |
-| Random(10000)       |  10000 |     0.386553 |        0.595262 |                0.181556 |                   0.288868 |   0.943503 |     0.925951 |             0.971766 |                 0.91452 |
-| Real Dataset(14265) |  14265 |     0.429145 |        0.451046 |                0.212405 |                   0.220252 |   0.730407 |      0.73031 |             0.705866 |                0.689217 |
-| Random(50000)       |  50000 |      3.19425 |         5.37834 |                 1.33131 |                     2.4803 |    5.25878 |      4.91015 |              4.65287 |                 4.90372 |
-| Random(100000)      | 100000 |      9.10937 |         12.9082 |                 3.54817 |                    5.67214 |    9.48811 |      9.70544 |              8.64532 |                 8.82824 |
 
-So that it is more readable we created graphs of the performance :
+*with pruning :*
+
+
+|                     | sklearn gini | sklearn entropy | ours gini | ours entropy |
+| ------------------- | ------------ | --------------- | --------- | ------------ |
+| Random(100)         | 0.00207186   | 0.00244713      | 0.0126264 | 0.0131702    |
+| Random(1000)        | 0.01739      | 0.0286255       | 0.0959089 | 0.0965569    |
+| Random(5000)        | 0.177305     | 0.291452        | 0.483316  | 0.482774     |
+| Random(10000)       | 0.396026     | 0.594108        | 1.05734   | 1.04421      |
+| Real Dataset(14265) | 0.487228     | 0.501664        | 0.823519  | 0.824055     |
+| Random(50000)       | 4.08232      | 5.68392         | 5.36568   | 5.34775      |
+| Random(100000)      | 10.3493      | 16.0937         | 10.5132   | 10.4989      |
+
+*without pruning :*
+
+
+|                     | ours gini no pruning | ours entropy no pruning                                                    |
+| ------------------- | -------------------- | -------------------------------------------------------------------------- |
+| Random(100)         | 0.00815368           | 0.0083878                                                                  |
+| Random(1000)        | 0.0796692            | 0.0797589                                                                  |
+| Random(5000)        | 0.42792              | 0.438367                                                                   |
+| Random(10000)       | 0.909921             | 0.902353                                                                   |
+| Real Dataset(14265) | 0.910468             | 0.855229                                                                   |
+| Random(50000)       | 4.84662              | 4.70836                                                                    |
+| Random(100000)      | 9.59238              | 9.68633
+So that it is more readable we created graphs of the performance : |
 
 ![](./res/training_time.png)
-![](./res/training_time_np.png)
 
 We can observe several intresting thing from that graph : 
 
@@ -209,28 +225,44 @@ I compared my implementation and scikit-learn on execution time on several rando
 
 Here is the result of the benchmarck :
 
-|                     |   size |   sklearn gini |   sklearn entropy |   sklearn gini no pruning |   sklearn entropy no pruning |   ours gini |   ours entropy |   ours gini no pruning |   ours entropy no pruning |
-|:--------------------|-------:|---------------:|------------------:|--------------------------:|-----------------------------:|------------:|---------------:|-----------------------:|--------------------------:|
-| Random(100)         |    100 |    7.08103e-05 |       0.000106573 |               6.55651e-05 |                  7.65324e-05 | 1.93119e-05 |    3.91006e-05 |            0.000410795 |               0.000438929 |
-| Random(1000)        |   1000 |    0.000157833 |       0.000278234 |               0.000149727 |                  0.000172138 | 0.00103569  |    0.00121593  |            0.00489092  |               0.00386429  |
-| Random(5000)        |   5000 |    0.000688553 |       0.000866652 |               0.000677586 |                  0.000767469 | 0.00661993  |    0.00602508  |            0.0219588   |               0.0221114   |
-| Random(10000)       |  10000 |    0.00192523  |       0.00169325  |               0.00197673  |                  0.00166535  | 0.0139227   |    0.0138409   |            0.0443594   |               0.0443764   |
-| Real Dataset(14265) |  14265 |    0.00789714  |       0.0079391   |               0.00783896  |                  0.00753736  | 0.035815    |    0.028239    |            0.061399    |               0.0691364   |
-| Random(50000)       |  50000 |    0.0116825   |       0.0126395   |               0.0117512   |                  0.0124135   | 0.0755329   |    0.0725815   |            0.225704    |               0.226079    |
-| Random(100000)      | 100000 |    0.0314751   |       0.0287361   |               0.0305243   |                  0.0318279   | 0.143312    |    0.14024     |            0.425203    |               0.421446    |
+*with pruning :*
+
+
+|                     | sklearn gini | sklearn entropy | ours gini   | ours entropy |
+| ------------------- | ------------ | --------------- | ----------- | ------------ |
+| Random(100)         | 8.53539e-05  | 0.000174284     | 0.000123501 | 0.000214815  |
+| Random(1000)        | 0.00019455   | 0.000413656     | 0.000883102 | 0.000960112  |
+| Random(5000)        | 0.000708342  | 0.000832319     | 0.00607967  | 0.00741029   |
+| Random(10000)       | 0.00194836   | 0.00193119      | 0.0137649   | 0.0142419    |
+| Real Dataset(14265) | 0.0135095    | 0.00992227      | 0.0423906   | 0.0458436    |
+| Random(50000)       | 0.0125453    | 0.0138762       | 0.0780728   | 0.0743835    |
+| Random(100000)      | 0.0313737    | 0.034543        | 0.158311    | 0.162944     |
+
+*without pruning*
+
+
+|                     | ours gini no pruning | ours entropy no pruning |
+| ------------------- | -------------------- | ----------------------- |
+| Random(100)         | 0.000421047          | 0.000430584             |
+| Random(1000)        | 0.00424647           | 0.00408769              |
+| Random(5000)        | 0.0220993            | 0.024039                |
+| Random(10000)       | 0.0463181            | 0.0461442               |
+| Real Dataset(14265) | 0.0817471            | 0.0809014               |
+| Random(50000)       | 0.233926             | 0.25408                 |
+| Random(100000)      | 0.481616             | 0.489822                |
 
 For the sake of readbility we created graph for the inferance time too
 
 ![](res/inferance_time.png)
-![](res/inferance_time_np.png)
 
 Here again we see the scikit learn implementation is faster than ours but we still are in the same class of algorythm.
 
 What is odd is that the inference seems to be slower with real dataset. Which is surprising considering the tree should be smaller so quicker to traverse.
 
-## Testing the selected model 
+## Testing the selected model
 
 Since it was the best performing model on the validation model we picked my implementation with :
+
 - 0.2 pruning size
 - prunning enable
 - entropy disorder mesurement
